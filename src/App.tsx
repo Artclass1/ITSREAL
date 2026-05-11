@@ -1,14 +1,14 @@
 import { BrowserRouter as Router, Routes, Route, Link, useNavigate } from 'react-router-dom';
 import React, { useEffect, useState } from 'react';
-import { onAuthStateChanged, User, signInAnonymously } from 'firebase/auth';
-import { auth, loginWithGoogle, logout } from './lib/firebase';
+import { insforge } from './lib/insforge';
 import HomePage from './pages/HomePage';
 import CreateListing from './pages/CreateListing';
 import PropertyDetail from './pages/PropertyDetail';
 import AuthPage from './pages/AuthPage';
 import { Button } from './components/ui/Button';
 
-function Layout({ children, user, loading }: { children: React.ReactNode, user: User | null, loading: boolean }) {
+// Using any because we just want to avoid strict Firebase User type
+function Layout({ children, user, loading }: { children: React.ReactNode, user: any | null, loading: boolean }) {
   return (
     <div className="min-h-screen bg-brand-bg text-brand-fg font-sans flex flex-col p-6 md:p-12 overflow-x-hidden select-none">
       <header className="flex justify-between items-baseline mb-20 w-full max-w-5xl mx-auto">
@@ -24,9 +24,12 @@ function Layout({ children, user, loading }: { children: React.ReactNode, user: 
             user ? (
               <div className="flex items-center gap-4 ml-2 md:ml-8 pl-4 md:pl-8 border-l border-neutral-800">
                 <span className="hidden lg:inline-block">
-                  {user.isAnonymous ? 'Guest' : user.email?.split('@')[0]}
+                  {user.email?.split('@')[0]}
                 </span>
-                <button className="hover:text-white transition-colors border-b border-transparent hover:border-white pb-1" onClick={() => logout()}>
+                <button className="hover:text-white transition-colors border-b border-transparent hover:border-white pb-1" onClick={async () => {
+                  await insforge.auth.signOut();
+                  window.location.reload();
+                }}>
                   Sign Out
                 </button>
               </div>
@@ -53,15 +56,14 @@ function Layout({ children, user, loading }: { children: React.ReactNode, user: 
 }
 
 export default function App() {
-  const [user, setUser] = useState<User | null>(null);
+  const [user, setUser] = useState<any | null>(null);
   const [loading, setLoading] = useState(true);
 
   useEffect(() => {
-    const unsubscribe = onAuthStateChanged(auth, (usr) => {
-      setUser(usr);
+    insforge.auth.getCurrentUser().then(({ data }) => {
+      setUser(data?.user || null);
       setLoading(false);
     });
-    return () => unsubscribe();
   }, []);
 
   return (

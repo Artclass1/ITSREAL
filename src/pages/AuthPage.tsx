@@ -1,6 +1,6 @@
 import React, { useState } from 'react';
 import { useNavigate } from 'react-router-dom';
-import { loginWithGoogle, signupWithEmail, loginWithEmail, auth } from '../lib/firebase';
+import { insforge } from '../lib/insforge';
 import { Button } from '../components/ui/Button';
 import { Input } from '../components/ui/Input';
 import { motion } from 'motion/react';
@@ -18,24 +18,25 @@ export default function AuthPage() {
     setLoading(true);
     setError(null);
     try {
+      let authError;
       if (isLogin) {
-        await loginWithEmail(email, password);
+        const { error } = await insforge.auth.signInWithPassword({ email, password });
+        authError = error;
       } else {
-        await signupWithEmail(email, password);
+        const { error, data } = await insforge.auth.signUp({ email, password });
+        authError = error;
+        if (!error && data?.requireEmailVerification) {
+           setError('Please verify your email address to continue.');
+           setLoading(false);
+           return;
+        }
       }
+
+      if (authError) throw authError;
+
       navigate('/');
     } catch (err: any) {
-      if (err.code === 'auth/invalid-credential') {
-        setError('Invalid email or password.');
-      } else if (err.code === 'auth/email-already-in-use') {
-        setError('An account with this email already exists.');
-      } else if (err.code === 'auth/weak-password') {
-        setError('Password must be at least 6 characters.');
-      } else if (err.code === 'auth/operation-not-allowed') {
-        setError('Email/Password login is not enabled in Firebase. Please enable it in the console.');
-      } else {
-        setError(err.message || 'An error occurred during authentication.');
-      }
+      setError(err.message || 'An error occurred during authentication.');
     } finally {
       setLoading(false);
     }
@@ -43,8 +44,11 @@ export default function AuthPage() {
 
   const handleGoogleLogin = async () => {
     try {
-      await loginWithGoogle();
-      navigate('/');
+      const { error } = await insforge.auth.signInWithOAuth({
+        provider: 'google',
+        redirectTo: window.location.origin
+      });
+      if (error) throw error;
     } catch (err: any) {
       setError(err.message || 'Failed to authenticate with Google.');
     }

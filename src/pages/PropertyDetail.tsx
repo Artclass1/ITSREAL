@@ -1,7 +1,6 @@
 import { useEffect, useState } from 'react';
 import { useParams, useNavigate } from 'react-router-dom';
-import { doc, getDoc, deleteDoc } from 'firebase/firestore';
-import { db, auth, handleFirestoreError, OperationType } from '../lib/firebase';
+import { insforge } from '../lib/insforge';
 import { Property } from '../types';
 import { MapPin, Tag, Box, Trash2, ArrowLeft } from 'lucide-react';
 import { Button } from '../components/ui/Button';
@@ -13,20 +12,26 @@ export default function PropertyDetail() {
   const [property, setProperty] = useState<Property | null>(null);
   const [loading, setLoading] = useState(true);
   const [deleting, setDeleting] = useState(false);
+  const [userId, setUserId] = useState<string | null>(null);
+
+  useEffect(() => {
+    insforge.auth.getCurrentUser().then(({ data }) => setUserId(data?.user?.id || null));
+  }, []);
 
   useEffect(() => {
     if (!id) return;
-    const docRef = doc(db, 'properties', id);
-    getDoc(docRef)
-      .then(snap => {
-        if (snap.exists()) {
-          setProperty({ id: snap.id, ...snap.data() } as Property);
+    insforge.database
+      .from('properties')
+      .select('*')
+      .eq('id', id)
+      .single()
+      .then(({ data, error }) => {
+        if (data) {
+          setProperty(data as Property);
+        } else if (error) {
+           console.error(error);
         }
         setLoading(false);
-      })
-      .catch(err => {
-        setLoading(false);
-        handleFirestoreError(err, OperationType.GET, `properties/${id}`);
       });
   }, [id]);
 
@@ -37,18 +42,23 @@ export default function PropertyDetail() {
 
     setDeleting(true);
     try {
-      await deleteDoc(doc(db, 'properties', id));
+      const { error } = await insforge.database
+        .from('properties')
+        .delete()
+        .eq('id', id);
+        
+      if (error) throw error;
       navigate('/');
     } catch (err) {
+      console.error(err);
       setDeleting(false);
-      handleFirestoreError(err, OperationType.DELETE, `properties/${id}`);
     }
   };
 
   if (loading) return <div className="text-neutral-500 animate-pulse text-[11px] font-bold uppercase tracking-widest text-center mt-20">Loading...</div>;
   if (!property) return <div className="text-neutral-500 text-center mt-20 text-[11px] uppercase tracking-widest">Property not found.</div>;
 
-  const isOwner = auth.currentUser?.uid === property.ownerId;
+  const isOwner = userId === property.ownerId;
 
   return (
     <motion.div 

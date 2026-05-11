@@ -1,32 +1,9 @@
 import { initializeApp } from 'firebase/app';
-import { getAuth, signInWithPopup, GoogleAuthProvider, signOut, signInAnonymously, createUserWithEmailAndPassword, signInWithEmailAndPassword } from 'firebase/auth';
 import { getFirestore } from 'firebase/firestore';
 import firebaseConfig from '../../firebase-applet-config.json';
 
 const app = initializeApp(firebaseConfig);
 export const db = getFirestore(app, firebaseConfig.firestoreDatabaseId);
-export const auth = getAuth(app);
-
-export const loginWithGoogle = () => {
-  const provider = new GoogleAuthProvider();
-  return signInWithPopup(auth, provider);
-};
-
-export const loginAnonymously = () => {
-  return signInAnonymously(auth);
-};
-
-export const signupWithEmail = (email: string, pass: string) => {
-  return createUserWithEmailAndPassword(auth, email, pass);
-};
-
-export const loginWithEmail = (email: string, pass: string) => {
-  return signInWithEmailAndPassword(auth, email, pass);
-};
-
-export const logout = () => {
-  return signOut(auth);
-};
 
 export enum OperationType {
   CREATE = 'create',
@@ -52,12 +29,7 @@ interface FirestoreErrorInfo {
 export function handleFirestoreError(error: unknown, operationType: OperationType, path: string | null) {
   const errInfo: FirestoreErrorInfo = {
     error: error instanceof Error ? error.message : String(error),
-    authInfo: {
-      userId: auth.currentUser?.uid,
-      email: auth.currentUser?.email,
-      emailVerified: auth.currentUser?.emailVerified,
-      isAnonymous: auth.currentUser?.isAnonymous,
-    },
+    authInfo: {},
     operationType,
     path
   };

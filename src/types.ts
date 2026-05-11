@@ -1,5 +1,3 @@
-import { Timestamp } from 'firebase/firestore';
-
 export interface Property {
   id: string; // Document ID
   title: string;
@@ -10,6 +8,6 @@ export interface Property {
   location: string;
   imageUrl: string;
   features: string[];
-  createdAt: Timestamp; // Using firestore timestamp
+  createdAt: string; 
   ownerId: string;
 }

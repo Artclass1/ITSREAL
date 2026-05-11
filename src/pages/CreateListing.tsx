@@ -1,14 +1,12 @@
 import React, { useState } from 'react';
-import { User } from 'firebase/auth';
-import { collection, doc, serverTimestamp, setDoc } from 'firebase/firestore';
-import { db, handleFirestoreError, OperationType } from '../lib/firebase';
+import { insforge } from '../lib/insforge';
 import { useNavigate } from 'react-router-dom';
 import { Button } from '../components/ui/Button';
 import { Input } from '../components/ui/Input';
 import { Textarea } from '../components/ui/Textarea';
 import { motion } from 'motion/react';
 
-export default function CreateListing({ user }: { user: User | null }) {
+export default function CreateListing({ user }: { user: any | null }) {
   const navigate = useNavigate();
   const [loading, setLoading] = useState(false);
   const [error, setError] = useState<string | null>(null);
@@ -43,7 +41,6 @@ export default function CreateListing({ user }: { user: User | null }) {
     setError(null);
 
     try {
-      const propertyRef = doc(collection(db, 'properties'));
       const newProperty = {
         title: formData.title,
         description: formData.description,
@@ -53,21 +50,20 @@ export default function CreateListing({ user }: { user: User | null }) {
         location: formData.location,
         imageUrl: formData.imageUrl || 'default',
         features: formData.features.split(',').map(f => f.trim()).filter(f => f),
-        createdAt: serverTimestamp(),
-        ownerId: user.uid
+        createdAt: new Date().toISOString(),
+        ownerId: user.id
       };
 
-      await setDoc(propertyRef, newProperty);
+      const { error: insertError } = await insforge.database
+        .from('properties')
+        .insert(newProperty);
+        
+      if (insertError) throw insertError;
+      
       navigate('/');
-    } catch (err) {
+    } catch (err: any) {
       setLoading(false);
-      try {
-        handleFirestoreError(err, OperationType.CREATE, 'properties');
-      } catch (wrappedErr) {
-        if (wrappedErr instanceof Error) {
-          setError('Failed to create listing. Ensure all required fields are filled and valid.');
-        }
-      }
+      setError('Failed to create listing: ' + (err.message || 'Ensure all required fields are filled and valid.'));
     }
   };
 
